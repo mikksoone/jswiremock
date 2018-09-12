@@ -64,6 +64,16 @@ exports.buildUrlStorageLinkedList = function(url){
     return parentNode;
 };
 
+exports.hasMatchingStubs = function(receivedUrlPartsLinkedList, getRequestStubs){
+    var arr = [];
+    for(var counter=0; counter < getRequestStubs.length; counter++){
+        if (recursiveUrlLinkedListSearch(receivedUrlPartsLinkedList, getRequestStubs[counter].getUrl()) == true){
+            arr.push(getRequestStubs[counter]);
+        }
+    }
+    return arr;
+};
+
 exports.hasMatchingStub = function(receivedUrlPartsLinkedList, getRequestStubs){
 
 

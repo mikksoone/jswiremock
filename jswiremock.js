@@ -6,7 +6,7 @@ var express = require('express');
 var bodyParser = require('body-parser');
 
 var app = express();
-//app.use( bodyParser.json() );       // to support JSON-encoded bodies
+app.use( bodyParser.json() );       // to support JSON-encoded bodies
 app.use(bodyParser.urlencoded({     // to support URL-encoded bodies
     extended: true
 }));
@@ -66,28 +66,46 @@ exports.jswiremock = function(port){
     });
 
     app.post('/*', function (req, res) {
-        var returnedStub = urlParser.hasMatchingStub(urlParser.buildUrlStorageLinkedList(req.originalUrl), postRequestStubs)
+        var returnedStubs = urlParser.hasMatchingStubs(urlParser.buildUrlStorageLinkedList(req.originalUrl), postRequestStubs)
 
-        if (returnedStub != null){
-            //TODO - ONLY VERIFY POST REQUEST PARAMS
-            for(key in returnedStub.getPostParams()){
-                if(req.body[key] != null){
-                    if(req.body[key] === returnedStub.getPostParams()[key]){
+        if (returnedStubs.length === 0){
+            return fail();
+        }
+
+        var counter = 0;
+        var returnedStub;
+        // We look for first stub where url and if any postparams match, then we break and use this as response
+        for (; counter < returnedStubs.length; ++counter) {
+            var success = true;
+            returnedStub = returnedStubs[counter];
+            for (key in returnedStub.getPostParams()) {
+                if (req.body[key] != null) {
+                    if (req.body[key] === returnedStub.getPostParams()[key]) {
                         continue;
+                    } else {
+                        success = false;
+                        break;
                     }
                 } else {
-                    res.status(404);
-                    res.send("Does not exist");
+                    success = false;
+                    break;
                 }
             }
-
-            for(var key in returnedStub.getMockResponse().getHeader()){
+            // Go to next stub if url matched and post params did not
+            if (success) break;
+        }
+        if (counter === returnedStubs.length) {
+            //Nothing found that matches url and post params
+            return fail();
+        } else {
+            for (var key in returnedStub.getMockResponse().getHeader()) {
                 res.set(key, returnedStub.getMockResponse().getHeader()[key]);
             }
             res.status(returnedStub.getMockResponse().getStatus());
             res.send(returnedStub.getMockResponse().getBody());
         }
-        else{
+
+        function fail() {
             res.status(404);
             res.send("Does not exist");
         }
